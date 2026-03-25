@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <meta name="description" content="Protocolo Galáxia — jogo educativo de programação para 6º e 7º ano." />
+  <title>🛰️ Protocolo Galáxia</title>
+  <link rel="stylesheet" href="css/global.css" />
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════
+     TOAST (global)
+════════════════════════════════════════════════ -->
+<div id="toast" class="hidden"></div>
+
+<!-- ═══════════════════════════════════════════════
+     MODAL OVERLAY (enciclopédia, etc.)
+════════════════════════════════════════════════ -->
+<div id="modal-overlay" class="hidden" style="
+  position:fixed;inset:0;z-index:500;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(0,0,0,.85);backdrop-filter:blur(10px);
+">
+  <div id="modal-box" style="
+    background:linear-gradient(135deg,#07112a,#0d1c40);
+    border:1px solid rgba(0,229,255,.2);
+    border-radius:24px;padding:28px;
+    max-width:440px;width:92%;
+    max-height:85vh;overflow:auto;
+    animation:encycReveal .5s ease-out;
+  "></div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SCREEN: MENU
+════════════════════════════════════════════════ -->
+<div id="screen-menu" class="screen" style="
+  background:radial-gradient(ellipse at 50% 55%,#0c1a3a 0%,#03060f 65%);
+  align-items:center;justify-content:center;overflow:hidden;
+">
+  <div class="stars-container" style="position:absolute;inset:0;pointer-events:none"></div>
+  <div style="position:relative;z-index:2;text-align:center;animation:slideUp .9s ease-out">
+    <div style="font-size:76px;animation:float 3.5s ease-in-out infinite;margin-bottom:8px">🛰️</div>
+    <h1 class="mono" style="font-size:clamp(18px,5vw,38px);color:#00e5ff;letter-spacing:5px;animation:glow 2.5s ease-in-out infinite;margin-bottom:6px">
+      PROTOCOLO GALÁXIA
+    </h1>
+    <p style="color:#2a4d6a;font-size:12px;letter-spacing:7px;margin-bottom:44px">O TRÁFEGO DE DADOS</p>
+    <button class="btn" id="btn-start" style="
+      background:transparent;border:2px solid #00e5ff;color:#00e5ff;
+      font-size:19px;padding:15px 54px;border-radius:50px;letter-spacing:2px;
+      box-shadow:0 0 28px #00e5ff33;animation:pulse 2.5s ease-in-out infinite;
+    ">🚀 INICIAR MISSÃO</button>
+    <div style="margin-top:36px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+      <div class="card" style="padding:13px 16px;max-width:130px;text-align:center"><div style="font-size:24px;margin-bottom:5px">📦</div><div style="font-weight:700;font-size:12px;color:#00e5ff">Classifique</div><div style="font-size:10px;color:#33557a;margin-top:3px">Arraste pacotes</div></div>
+      <div class="card" style="padding:13px 16px;max-width:130px;text-align:center"><div style="font-size:24px;margin-bottom:5px">🚀</div><div style="font-weight:700;font-size:12px;color:#00e5ff">Missões</div><div style="font-size:10px;color:#33557a;margin-top:3px">Escolha protocolos</div></div>
+      <div class="card" style="padding:13px 16px;max-width:130px;text-align:center"><div style="font-size:24px;margin-bottom:5px">🛡️</div><div style="font-weight:700;font-size:12px;color:#00e5ff">Defenda</div><div style="font-size:10px;color:#33557a;margin-top:3px">Destrua malwares</div></div>
+      <div class="card" style="padding:13px 16px;max-width:130px;text-align:center"><div style="font-size:24px;margin-bottom:5px">👾</div><div style="font-weight:700;font-size:12px;color:#00e5ff">Boss</div><div style="font-size:10px;color:#33557a;margin-top:3px">A cada 10 rodadas!</div></div>
+    </div>
+    <div id="menu-highscore" style="margin-top:22px;color:#ffd700;font-size:12px;display:none" class="mono">🏆 Recorde: <span id="menu-hs-val">0</span>pts</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SCREEN: GAME
+════════════════════════════════════════════════ -->
+<div id="screen-game" class="screen hidden" style="background:#03060f">
+  <div class="stars-container" style="position:absolute;inset:0;pointer-events:none;z-index:0"></div>
+
+  <!-- HUD -->
+  <div style="position:relative;z-index:10;display:flex;align-items:center;justify-content:space-between;
+    padding:9px 14px;background:linear-gradient(90deg,#03060fee,#08122aee);
+    border-bottom:1px solid rgba(0,229,255,.15);flex-wrap:wrap;gap:8px">
+    <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+      <span id="hud-score"  class="mono" style="color:#00e5ff;font-size:13px">⭐0</span>
+      <span id="hud-coins"  style="color:#ffd700;font-size:13px">💰30</span>
+      <div style="display:flex;align-items:center;gap:5px">
+        <span id="hud-energy" style="color:#69ff47;font-size:13px">⚡100%</span>
+        <div style="width:56px;height:5px;background:#1a2540;border-radius:3px;overflow:hidden">
+          <div id="energy-bar" style="height:100%;width:100%;background:#69ff47;transition:width .4s;border-radius:3px"></div>
+        </div>
+      </div>
+      <span id="hud-level" style="color:#7799bb;font-size:11px">Nv1</span>
+      <span id="hud-streak" style="color:#ff9900;font-size:11px;display:none;animation:pulse 1s infinite"></span>
+      <span id="hud-boss-warn" style="color:#ff00ff;font-size:10px;display:none;animation:warnBlink 1s infinite">⚡ BOSS na próxima!</span>
+      <span id="hud-effects" style="display:flex;gap:4px;flex-wrap:wrap"></span>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn" id="btn-encyc" style="background:#ffd70014;color:#ffd700;font-size:12px;padding:5px 11px;border:1px solid #ffd70030">
+        📖 <span id="hud-encyc">0/3</span>
+      </button>
+      <button class="btn" id="btn-shop" style="background:#00e5ff10;color:#00e5ff;font-size:12px;padding:5px 11px;border:1px solid #00e5ff25">🛒</button>
+      <button class="btn" id="btn-debug" style="background:#ff6ec714;color:#ff6ec7;font-size:12px;padding:5px 11px;border:1px solid #ff6ec730">🐞</button>
+    </div>
+  </div>
+
+  <!-- Mode label strip -->
+  <div id="mode-label" style="text-align:center;padding:5px;position:relative;z-index:5;border-bottom:1px solid transparent"></div>
+
+  <!-- Mode content -->
+  <div id="mode-container" style="flex:1;display:flex;flex-direction:column;position:relative;overflow:hidden;z-index:2">
+    <div style="flex:1;display:flex;align-items:center;justify-content:center">
+      <div style="font-size:48px;animation:spin 1.4s linear infinite">🛰️</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SCREEN: SHOP
+════════════════════════════════════════════════ -->
+<div id="screen-shop" class="screen hidden" style="background:linear-gradient(160deg,#03060f,#0a1530);overflow:auto">
+  <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 20px;background:rgba(0,0,0,.5);border-bottom:1px solid rgba(255,215,0,.15);position:sticky;top:0;z-index:10">
+    <h2 class="mono" style="color:#ffd700;font-size:17px">🛒 LOJA GALÁCTICA</h2>
+    <div style="display:flex;gap:16px;align-items:center">
+      <span style="color:#ffd700;font-weight:700">💰 <span id="shop-coins">0</span></span>
+      <button class="btn" id="btn-shop-back" style="background:rgba(255,255,255,.12);color:#cce0ff;font-size:13px;padding:8px 18px">← Voltar</button>
+    </div>
+  </div>
+  <div id="shop-grid" style="padding:20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px;max-width:860px;margin:0 auto;width:100%"></div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SCREEN: GAME OVER
+════════════════════════════════════════════════ -->
+<div id="screen-gameover" class="screen hidden" style="
+  background:radial-gradient(ellipse at 50% 50%,#1c0505,#03060f);
+  align-items:center;justify-content:center;overflow:hidden;
+">
+  <div class="stars-container" style="position:absolute;inset:0;pointer-events:none"></div>
+  <div style="text-align:center;z-index:2;animation:slideUp .7s ease-out">
+    <div style="font-size:72px;margin-bottom:10px">💥</div>
+    <h1 class="mono" style="font-size:30px;color:#ff4444;letter-spacing:5px;margin-bottom:12px">GAME OVER</h1>
+    <div style="display:flex;gap:20px;justify-content:center;flex-wrap:wrap;margin-bottom:20px">
+      <div class="card" style="padding:12px 18px;text-align:center;min-width:90px"><div style="color:#668899;font-size:10px">⭐ Pontos</div><div class="mono" id="go-score"  style="color:#ffd700;font-size:20px;font-weight:700">0</div></div>
+      <div class="card" style="padding:12px 18px;text-align:center;min-width:90px"><div style="color:#668899;font-size:10px">🏆 Recorde</div><div class="mono" id="go-highscore" style="color:#ffd700;font-size:20px;font-weight:700">0</div></div>
+      <div class="card" style="padding:12px 18px;text-align:center;min-width:90px"><div style="color:#668899;font-size:10px">📡 Nível</div><div class="mono" id="go-level"  style="color:#ffd700;font-size:20px;font-weight:700">1</div></div>
+      <div class="card" style="padding:12px 18px;text-align:center;min-width:90px"><div style="color:#668899;font-size:10px">🔄 Rodadas</div><div class="mono" id="go-rounds" style="color:#ffd700;font-size:20px;font-weight:700">0</div></div>
+    </div>
+    <div id="go-record" class="hidden" style="color:#ffd700;font-size:14px;margin-bottom:12px">🎉 NOVO RECORDE!</div>
+    <div style="margin-bottom:16px;color:#5577aa;font-size:12px">📖 Variáveis descobertas: <span id="go-encyc">nenhuma</span></div>
+    <div style="display:flex;gap:12px;justify-content:center">
+      <button class="btn" id="btn-restart" style="background:transparent;border:2px solid #00e5ff;color:#00e5ff;font-size:16px;padding:13px 34px">🔄 Jogar</button>
+      <button class="btn" id="btn-to-menu" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#667788;font-size:14px;padding:13px 24px">🏠 Menu</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SCREEN: DEBUG
+════════════════════════════════════════════════ -->
+<div id="screen-debug" class="screen hidden" style="background:#010e01;font-family:'Share Tech Mono',monospace;overflow:auto">
+  <div style="display:flex;justify-content:space-between;padding:10px 16px;background:#001500;border-bottom:1px solid rgba(0,255,0,.15);position:sticky;top:0;z-index:10">
+    <span style="color:#00ff00;font-size:12px">🐞 DEBUG — PROTOCOLO GALÁXIA</span>
+    <button class="btn" id="btn-debug-back" style="background:rgba(0,255,0,.07);color:#00ff00;font-size:11px;padding:5px 12px;border:1px solid rgba(0,255,0,.2)">← Jogo</button>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:14px">
+    <!-- State panel -->
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div>
+        <div style="color:#00ff00;font-size:11px;margin-bottom:6px">📊 ESTADO</div>
+        <div id="debug-state" style="background:#001800;border:1px solid rgba(0,255,0,.12);border-radius:8px;padding:12px;font-size:10px;line-height:2"></div>
+      </div>
+      <div>
+        <div style="color:#ff6ec7;font-size:11px;margin-bottom:6px">🎮 INJETAR</div>
+        <div id="debug-inject" style="display:flex;gap:7px;flex-wrap:wrap"></div>
+      </div>
+      <div style="background:#001520;border:1px solid rgba(0,229,255,.12);border-radius:8px;padding:12px;font-size:10px;color:#7799aa;line-height:1.85">
+        <div style="color:#00e5ff;margin-bottom:6px;font-size:11px">📖 COMO DEBUGAR</div>
+        <div>🟢 <span style="color:#55ff55">success</span> = ação correta</div>
+        <div>🔴 <span style="color:#ff5555">error</span> = erro ou dano</div>
+        <div>🟡 <span style="color:#ffdd44">warn</span> = alerta</div>
+        <div>⚪ <span style="color:#aabbcc">info</span> = sistema</div>
+        <div style="margin-top:8px;color:#334455">Boss a cada 10 rodadas. "👾Boss" força um instantâneo. WASD/setas movem a nave.</div>
+      </div>
+    </div>
+    <!-- Log panel -->
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="color:#00ff00;font-size:11px">📋 LOG</div>
+      <div id="debug-log" style="flex:1;background:#001800;border:1px solid rgba(0,255,0,.12);border-radius:8px;padding:12px;overflow:auto;max-height:65vh">
+        <span style="color:#224422;font-size:10px">sem eventos…</span>
+      </div>
+      <button class="btn" id="btn-clear-log" style="background:#1a0000;border:1px solid rgba(255,0,0,.15);color:#ff5555;font-size:11px;padding:7px">🗑️ Limpar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SCRIPTS (ordem importa!)
+════════════════════════════════════════════════ -->
+<script src="js/data.js"></script>
+<script src="js/helpers.js"></script>
+<script src="js/state.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/boss.js"></script>
+<script src="js/game.js"></script>
+<script src="js/main.js"></script>
+
+</body>
+</html>
