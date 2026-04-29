@@ -3,53 +3,66 @@
 // ═══════════════════════════════════════════════════
 
 const Boss = {
-  data:        null,
-  hp:          0,
-  pos:         { x: 75, y: 45 },
-  playerPos:   { x: 18, y: 50 },
+  data: null,
+  hp: 0,
+  pos: { x: 75, y: 45 },
+  playerPos: { x: 18, y: 50 },
   projectiles: [],
-  active:      false,
-  angle:       0,
-  atkIdx:      0,
-  keysDown:    {},
-  onEnd:       null,
-  _onKeyDown:  null,
-  _onKeyUp:    null,
+  active: false,
+  angle: 0,
+  atkIdx: 0,
+  keysDown: {},
+  onEnd: null,
+  _onKeyDown: null,
+  _onKeyUp: null,
+  ammo: 10,
+  maxAmmo: 10,
+  reloadTime: 1500,
+  cooldown: 0,
+  fireRate: 300,
+  isReloading: false,
 
   start(lv, onEnd) {
     State.clearBoss();
-    this.data       = BOSSES[Math.floor((lv - 1) / 3) % BOSSES.length];
-    this.hp         = this.data.maxHp;
-    this.pos        = { x: 75, y: 45 };
-    this.playerPos  = { x: 18, y: 50 };
+    this.ammo = 10;
+    this.maxAmmo = 10;
+    this.isReloading = false;
+    this.cooldown = 0;
+    this.data = BOSSES[Math.floor((lv - 1) / 3) % BOSSES.length];
+    this.hp = this.data.maxHp;
+    this.pos = { x: 75, y: 45 };
+    this.playerPos = { x: 18, y: 50 };
     this.projectiles = [];
-    this.active     = true;
-    this.angle      = 0;
-    this.atkIdx     = 0;
-    this.keysDown   = {};
-    this.onEnd      = onEnd;
+    this.active = true;
+    this.angle = 0;
+    this.atkIdx = 0;
+    this.keysDown = {};
+    this.onEnd = onEnd;
 
     State.addLog(`👾 BOSS: ${this.data.name} apareceu!`, 'warn');
     State.showToast(`👾 BOSS: ${this.data.name}!`, false);
 
     // Keyboard
     this._onKeyDown = e => {
+      if (e.key === ' ') {
+        this.shoot();
+      }
       this.keysDown[e.key.toLowerCase()] = true;
-      if (['arrowup','arrowdown','arrowleft','arrowright'].includes(e.key.toLowerCase()))
+      if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(e.key.toLowerCase()))
         e.preventDefault();
     };
     this._onKeyUp = e => { this.keysDown[e.key.toLowerCase()] = false; };
     window.addEventListener('keydown', this._onKeyDown);
-    window.addEventListener('keyup',   this._onKeyUp);
+    window.addEventListener('keyup', this._onKeyUp);
 
     // Player movement loop (30fps)
     State.timers.playerLoop = setInterval(() => {
       if (!this.active) return;
       const spd = 0.6, k = this.keysDown;
       let { x, y } = this.playerPos;
-      if (k['w'] || k['arrowup'])    y = clamp(y - spd, 5, 90);
-      if (k['s'] || k['arrowdown'])  y = clamp(y + spd, 5, 90);
-      if (k['a'] || k['arrowleft'])  x = clamp(x - spd, 2, 55);
+      if (k['w'] || k['arrowup']) y = clamp(y - spd, 5, 90);
+      if (k['s'] || k['arrowdown']) y = clamp(y + spd, 5, 90);
+      if (k['a'] || k['arrowleft']) x = clamp(x - spd, 2, 55);
       if (k['d'] || k['arrowright']) x = clamp(x + spd, 2, 55);
       this.playerPos = { x, y };
       this._renderPlayer();
@@ -59,7 +72,7 @@ const Boss = {
     State.timers.bossLoop = setInterval(() => {
       if (!this.active) return;
       this.angle += 0.02;
-      this.pos = { x: 72 + Math.sin(this.angle)*8, y: 45 + Math.cos(this.angle*0.7)*15 };
+      this.pos = { x: 72 + Math.sin(this.angle) * 8, y: 45 + Math.cos(this.angle * 0.7) * 15 };
       this._renderBoss();
     }, 50);
 
@@ -86,27 +99,27 @@ const Boss = {
 
     if (type === 'spread' || type === 'burst') {
       for (let i = 0; i < 12; i++) {
-        const a = (i/12)*Math.PI*2;
-        projs.push({id:id(),x:bp.x,y:bp.y,vx:Math.cos(a)*.9,vy:Math.sin(a)*.9,color,emoji:'💜'});
+        const a = (i / 12) * Math.PI * 2;
+        projs.push({ id: id(), x: bp.x, y: bp.y, vx: Math.cos(a) * .9, vy: Math.sin(a) * .9, color, emoji: '💜' });
       }
     } else if (type === 'laser' || type === 'diagonal') {
       for (let i = 0; i < 8; i++) {
-        projs.push({id:id(),x:bp.x,y:30+i*5,vx:-1.4,vy:0,color,emoji:'🔴'});
-        projs.push({id:id(),x:bp.x,y:bp.y,vx:-1.2,vy:(i-3)*.3,color,emoji:'🟣'});
+        projs.push({ id: id(), x: bp.x, y: 30 + i * 5, vx: -1.4, vy: 0, color, emoji: '🔴' });
+        projs.push({ id: id(), x: bp.x, y: bp.y, vx: -1.2, vy: (i - 3) * .3, color, emoji: '🟣' });
       }
     } else if (type === 'spiral' || type === 'storm') {
       for (let i = 0; i < 16; i++) {
-        const a = (i/16)*Math.PI*2 + Date.now()*.001;
-        projs.push({id:id(),x:bp.x,y:bp.y,vx:Math.cos(a)*1.1,vy:Math.sin(a)*.8,color,emoji:'🌀'});
+        const a = (i / 16) * Math.PI * 2 + Date.now() * .001;
+        projs.push({ id: id(), x: bp.x, y: bp.y, vx: Math.cos(a) * 1.1, vy: Math.sin(a) * .8, color, emoji: '🌀' });
       }
     } else if (type === 'chase' || type === 'homing') {
-      const pp = this.playerPos, dx = pp.x-bp.x, dy = pp.y-bp.y;
-      const len = Math.sqrt(dx*dx+dy*dy)||1;
+      const pp = this.playerPos, dx = pp.x - bp.x, dy = pp.y - bp.y;
+      const len = Math.sqrt(dx * dx + dy * dy) || 1;
       for (let i = 0; i < 3; i++)
-        projs.push({id:id(),x:bp.x,y:bp.y,vx:(dx/len)*1+(i-1)*.3,vy:(dy/len)*1+(i-1)*.3,color,emoji:'🎯'});
+        projs.push({ id: id(), x: bp.x, y: bp.y, vx: (dx / len) * 1 + (i - 1) * .3, vy: (dy / len) * 1 + (i - 1) * .3, color, emoji: '🎯' });
     } else if (type === 'wall') {
       for (let i = 0; i < 10; i++)
-        projs.push({id:id(),x:90,y:i*10,vx:-1.1,vy:0,color,emoji:'🟩'});
+        projs.push({ id: id(), x: 90, y: i * 10, vx: -1.1, vy: 0, color, emoji: '🟩' });
     }
     this.projectiles = [...this.projectiles, ...projs].slice(-80);
   },
@@ -120,29 +133,48 @@ const Boss = {
     setTimeout(() => {
       this._hideWarning();
       this._spawnAttack(atk.type);
-      const delay = Math.max(2000, 3500 - lv*100);
+      const delay = Math.max(2000, 3500 - lv * 100);
       setTimeout(() => this._fireAttack(lv), delay);
     }, 1200);
   },
 
   _tickProjectiles() {
-    const pp = this.playerPos;
     const arena = document.getElementById('boss-arena');
     if (!arena) return;
-    // Move + collision
+
     this.projectiles = this.projectiles
-      .map(p => ({ ...p, x: p.x+p.vx, y: p.y+p.vy }))
+      .map(p => ({ ...p, x: p.x + p.vx, y: p.y + p.vy }))
       .filter(p => p.x > -10 && p.x < 110 && p.y > -10 && p.y < 110)
       .filter(p => {
-        const hit = Math.abs(p.x - pp.x) < 4 && Math.abs(p.y - pp.y) < 4;
-        if (hit) {
-          State.takeDmg(15, () => Game.gameOver());
-          State.addLog('💥 Projétil acertou você! -15 energia', 'error');
-          const pe = document.getElementById('player-ship');
-          if (pe) { pe.style.filter = 'drop-shadow(0 0 16px #ff0000)'; setTimeout(() => { if(pe) pe.style.filter = 'drop-shadow(0 0 12px #00e5ff88)'; }, 400); }
+
+        // 🟥 PROJÉTIL DO PLAYER → ACERTA BOSS
+        if (p.fromPlayer) {
+          const hitBoss =
+            Math.abs(p.x - this.pos.x) < 5 &&
+            Math.abs(p.y - this.pos.y) < 5;
+
+          if (hitBoss) {
+            this.damage(p.damage);
+            State.addLog(`🎯 Acertou boss! -${p.damage}hp`, 'success');
+          }
+
+          return !hitBoss;
         }
-        return !hit;
+
+        // 🟪 PROJÉTIL DO BOSS → ACERTA PLAYER
+        const pp = this.playerPos;
+        const hitPlayer =
+          Math.abs(p.x - pp.x) < 4 &&
+          Math.abs(p.y - pp.y) < 4;
+
+        if (hitPlayer) {
+          State.takeDmg(p.damage || 15, () => Game.gameOver());
+          State.addLog(`💥 Você levou dano!`, 'error');
+        }
+
+        return !hitPlayer;
       });
+
     this._renderProjectiles();
   },
 
@@ -156,7 +188,7 @@ const Boss = {
     this.active = false;
     State.clearBoss();
     window.removeEventListener('keydown', this._onKeyDown);
-    window.removeEventListener('keyup',   this._onKeyUp);
+    window.removeEventListener('keyup', this._onKeyUp);
     this.keysDown = {};
     this.projectiles = [];
     if (won) {
@@ -175,6 +207,16 @@ const Boss = {
   _buildArena() {
     const container = document.getElementById('mode-container');
     container.innerHTML = `
+    <div id="ammo-ui" style="
+  position:absolute;
+  bottom:20px;
+  left:50%;
+  transform:translateX(-50%);
+  color:#00e5ff;
+  font-size:12px;
+">
+  🔫 <span id="ammo-count"></span>
+</div>
       <div id="boss-arena" style="flex:1;position:relative;overflow:hidden;background:radial-gradient(ellipse at 70% 45%,${this.data.color}18 0%,#040212 60%)">
         <!-- HP bar -->
         <div style="position:absolute;top:0;left:0;right:0;height:8px;background:#111;z-index:10">
@@ -192,7 +234,7 @@ const Boss = {
           ⚠️ Clique no boss para atacar! WASD / ↑↓←→ para esquivar!
         </div>
         <!-- Boss entity -->
-        <div id="boss-entity" style="position:absolute;left:75%;top:45%;transform:translate(-50%,-50%);z-index:8;cursor:crosshair;animation:bossFloat 2s ease-in-out infinite;filter:drop-shadow(0 0 28px ${this.data.color})" onclick="Boss.damage(25);spawnParticle(event.clientX,event.clientY,'💥','${this.data.color}');State.addLog('🎯 Boss atingido! -25hp','success')">
+        <div id="boss-entity" style="position:absolute;left:75%;top:45%;transform:translate(-50%,-50%);z-index:8;cursor:crosshair;animation:bossFloat 2s ease-in-out infinite;filter:drop-shadow(0 0 28px ${this.data.color})" onclick="Boss.shoot()";spawnParticle(event.clientX,event.clientY,'💥','${this.data.color}');State.addLog('🎯 Boss atingido! -25hp','success')">
           <div style="text-align:center">
             <div style="font-size:60px">${this.data.emoji}</div>
             <div class="mono" style="color:${this.data.color};font-size:9px;margin-top:2px">${this.data.name}</div>
@@ -255,6 +297,11 @@ const Boss = {
     if (bar) bar.style.width = (this.hp / this.data.maxHp * 100) + '%';
     if (txt) txt.textContent = `❤️ ${this.hp}/${this.data.maxHp}`;
   },
+  
+  _updateAmmoUI() {
+    const el = document.getElementById('ammo-count');
+    if (el) el.textContent = `${this.ammo}/${this.maxAmmo}`;
+  },
 
   _showWarning(atk) {
     const w = document.getElementById('boss-warning');
@@ -268,4 +315,51 @@ const Boss = {
     const w = document.getElementById('boss-warning');
     if (w) w.classList.add('hidden');
   },
+
+  reload() {
+    if (this.isReloading) return;
+
+    this.isReloading = true;
+    State.addLog('🔄 Recarregando...', 'warn');
+
+    setTimeout(() => {
+      this.ammo = this.maxAmmo;
+      this.isReloading = false;
+      State.addLog('🔫 Munição recarregada!', 'success');
+    }, this.reloadTime);
+  },
+
+  shoot() {
+    if (!this.active) return;
+
+    // cooldown
+    if (Date.now() < this.cooldown) return;
+
+    // sem munição → recarrega
+    if (this.ammo <= 0) {
+      this.reload();
+      return;
+    }
+
+    this.cooldown = Date.now() + this.fireRate;
+    this.ammo--;
+
+    // cria projétil indo pro boss
+    const dx = this.pos.x - this.playerPos.x;
+    const dy = this.pos.y - this.playerPos.y;
+    const len = Math.sqrt(dx * dx + dy * dy) || 1;
+
+    this.projectiles.push({
+      id: Date.now() + Math.random(),
+      x: this.playerPos.x,
+      y: this.playerPos.y,
+      vx: (dx / len) * 2,
+      vy: (dy / len) * 2,
+      fromPlayer: true,
+      emoji: '🔵',
+      color: '#00e5ff',
+      damage: 15
+    });
+  }
+
 };
