@@ -20,9 +20,15 @@ const Game = {
   start() {
     State.clearAll();
     State.reset();
+    scoreSent = false; // permite envio numa nova partida
     this.mode = null; this.isBoss = false;
     this.packets = []; this.threats = [];
     this.mission = null; this.beaming = false;
+    // Reseta visual da tela de game over para o padrão
+    const icon = document.getElementById('go-title-icon');
+    const text = document.getElementById('go-title-text');
+    if (icon) icon.textContent = '💥';
+    if (text) { text.textContent = 'GAME OVER'; text.style.color = '#ff4444'; }
     UI.buildStars();
     UI.refreshHUD();
     showScreen('game');
@@ -36,14 +42,44 @@ const Game = {
     Boss.active = false;
     State.highScore = Math.max(State.highScore, State.score);
     State.addLog('💀 Game Over!', 'error');
-    // Preencher tela de game over
-    document.getElementById('go-score').textContent   = State.score;
+
+    const finalScore = calcFinalScore();
+    sendFinalScore({ score: finalScore, difficulty: getPlatformDifficulty() });
+
+    document.getElementById('go-score').textContent     = State.score;
     document.getElementById('go-highscore').textContent = State.highScore;
-    document.getElementById('go-level').textContent   = State.level;
-    document.getElementById('go-rounds').textContent  = State.round;
+    document.getElementById('go-level').textContent     = State.level;
+    document.getElementById('go-rounds').textContent    = State.round;
+    document.getElementById('go-phase').textContent     = `${State.phase}/${TOTAL_PHASES}`;
     const keys = Object.keys(State.encyclopedia);
     document.getElementById('go-encyc').textContent = keys.length ? keys.join(', ') : 'nenhuma';
     document.getElementById('go-record').classList.toggle('hidden', State.score === 0 || State.score < State.highScore);
+    showScreen('gameover');
+  },
+
+  // ── Vitória (completou todas as fases) ────────
+  victory() {
+    State.clearAll();
+    Boss.active = false;
+    State.highScore = Math.max(State.highScore, State.score);
+    State.addLog('🏆 VITÓRIA! Todas as fases concluídas!', 'success');
+
+    const finalScore = calcFinalScore();
+    sendFinalScore({ score: finalScore, difficulty: getPlatformDifficulty() });
+
+    // Reutiliza a tela de game over com visual de vitória
+    document.getElementById('go-title-icon').textContent  = '🏆';
+    document.getElementById('go-title-text').textContent  = 'MISSÃO COMPLETA!';
+    document.getElementById('go-title-text').style.color  = '#ffd700';
+    document.getElementById('go-score').textContent       = State.score;
+    document.getElementById('go-highscore').textContent   = State.highScore;
+    document.getElementById('go-level').textContent       = State.level;
+    document.getElementById('go-rounds').textContent      = State.round;
+    document.getElementById('go-phase').textContent       = `${TOTAL_PHASES}/${TOTAL_PHASES}`;
+    const keys = Object.keys(State.encyclopedia);
+    document.getElementById('go-encyc').textContent = keys.length ? keys.join(', ') : 'nenhuma';
+    document.getElementById('go-record').classList.remove('hidden');
+    document.getElementById('go-record').textContent = `✅ Score enviado: ${finalScore}/100`;
     showScreen('gameover');
   },
 
@@ -51,32 +87,70 @@ const Game = {
   nextRound() {
     State.clearDefense();
     this.isBoss = false;
-    State.round++;
-    if (State.round % 8 === 0) State.level++;
-    UI.refreshHUD();
 
-    // Boss a cada 10 rodadas
-    if (State.round > 0 && State.round % 10 === 0) {
+    const phaseCfg = getCurrentPhase();
+
+    // ── Verifica se chegou na boss round desta fase ──
+    if (phaseCfg.hasBoss && State.roundInPhase >= phaseCfg.rounds - 1) {
+      // É o boss da fase
+      State.round++;
+      State.roundInPhase++;
       this.mode = 'defense';
       this.isBoss = true;
       this._setModeLabel('defense', true);
-      Boss.start(State.level, () => this.nextRound());
+      UI.refreshHUD();
+      State.addLog(`👾 BOSS da Fase ${State.phase}!`, 'warn');
+      Boss.start(State.phase, () => this._onBossDefeated());
       return;
     }
 
-    let m;
-    if (State.level <= 2)      m = 'classify';
-    else if (State.level <= 4) m = Math.random() < .65 ? 'classify' : 'mission';
-    else {
-      const r = Math.random();
-      m = r < .38 ? 'classify' : r < .72 ? 'mission' : 'defense';
+    // ── Fase sem boss: avança ao completar todas as rodadas ──
+    if (!phaseCfg.hasBoss && State.roundInPhase >= phaseCfg.rounds) {
+      this._onBossDefeated(); // reutiliza a lógica de avanço de fase
+      return;
     }
-    this.mode = m;
-    this._setModeLabel(m, false);
-    State.addLog(`── Rodada ${State.round} · Nível ${State.level} · ${m}`, 'info');
-    if (m === 'classify') this._startClassify();
-    else if (m === 'mission') this._startMission();
+
+    // ── Rodada normal ──
+    State.round++;
+    State.roundInPhase++;
+
+    // Level sobe junto com a fase para manter compatibilidade com boss/dificuldade
+    State.level = State.phase;
+    UI.refreshHUD();
+
+    const mode = pickMode(phaseCfg);
+    this.mode = mode;
+    this._setModeLabel(mode, false);
+    State.addLog(`── Fase ${State.phase}/${TOTAL_PHASES} · Rodada ${State.roundInPhase}/${phaseCfg.rounds} · ${mode}`, 'info');
+
+    if (mode === 'classify') this._startClassify();
+    else if (mode === 'mission') this._startMission();
     else this._startDefense();
+  },
+
+  // ── Após boss derrotado / fase sem boss concluída ──
+  _onBossDefeated() {
+    // Bônus de fase concluída
+    State.earnScore(50);
+    State.earnCoins(30);
+    State.showToast(`🏆 Fase ${State.phase} concluída! +50pts`, true);
+    State.addLog(`🏆 Fase ${State.phase} concluída!`, 'success');
+
+    // Verifica se era a última fase
+    if (State.phase >= TOTAL_PHASES) {
+      setTimeout(() => this.victory(), 1000);
+      return;
+    }
+
+    // Avança para próxima fase
+    State.phase++;
+    State.roundInPhase = 0;
+    State.scoreAtPhaseStart = State.score;
+    State.level = State.phase;
+    UI.refreshHUD();
+    UI.showPhaseTransition(State.phase, PHASES[State.phase - 1].name, () => {
+      setTimeout(() => this.nextRound(), 400);
+    });
   },
 
   _setModeLabel(mode, isBoss) {
@@ -97,7 +171,8 @@ const Game = {
   //  MODO CLASSIFY
   // ══════════════════════════════════════════════
   _startClassify() {
-    const cnt = Math.min(3 + Math.floor(State.level / 2), 6);
+    const phaseCfg = getCurrentPhase();
+    const cnt = phaseCfg.classify.packetCount;
     this.totalPkts = cnt; this.classifiedCnt = 0;
     this.packets = Array.from({length:cnt},(_,i) => {
       const tp = getRnd(PACKET_TYPES);
@@ -253,7 +328,8 @@ const Game = {
         setTimeout(() => this.nextRound(), 700);
       } else { this._renderClassify(); }
     } else {
-      State.takeDmg(10, () => this.gameOver());
+      const phaseCfg = getCurrentPhase();
+      State.takeDmg(phaseCfg.classify.wrongDmg, () => this.gameOver());
       State.streak = 0; UI.refreshHUD();
       State.addLog(`❌ "${pkt.value}" NÃO é ${dropped}! Era ${pkt.type}`, 'error');
       State.showToast(`❌ Era ${pkt.type}!`, false);
@@ -371,15 +447,17 @@ const Game = {
   //  MODO DEFENSE
   // ══════════════════════════════════════════════
   _startDefense() {
-    this.defDuration = 25 + State.level * 3;
-    this.defTimer = this.defDuration;
+    const phaseCfg = getCurrentPhase();
+    const defCfg   = phaseCfg.defense;
+    this.defDuration = defCfg.duration;
+    this.defTimer    = this.defDuration;
     this.threats = []; this.cryptoOn = !!State.effects.cryptokey;
     this.spawned = 0; this.noSecs = 0;
     State.addLog('⚠️ Defesa ativada!', 'warn');
     this._renderDefense();
 
-    const maxSpawn = 4 + State.level * 2;
-    const spawnDelay = Math.max(700, 1600 - State.level * 80);
+    const maxSpawn   = defCfg.maxSpawn;
+    const spawnDelay = defCfg.spawnDelay;
 
     State.timers.threatSpawn = setInterval(() => {
       if (this.spawned >= maxSpawn) { clearInterval(State.timers.threatSpawn); return; }
@@ -477,19 +555,46 @@ const Game = {
     if (!layer) return;
     const count = document.getElementById('def-threat-count');
     if (count) count.textContent = '⚡ ' + this.threats.filter(t=>t.alive).length;
-    layer.innerHTML = '';
     layer.style.pointerEvents = 'auto';
-    this.threats.filter(t => t.alive).forEach(th => {
-      const d = document.createElement('div');
-      d.style.cssText = `position:absolute;left:${th.x}%;top:${th.y}%;transform:translate(-50%,-50%);z-index:8;cursor:crosshair;animation:${th.exploding?'explodeOut .45s ease-out forwards':'threatIn .3s ease-out'};transition:left .08s linear`;
-      d.innerHTML = `<div style="background:${th.color}18;border:2px solid ${th.color}77;border-radius:12px;padding:8px 12px;text-align:center;box-shadow:0 0 18px ${th.color}44">
-        <div style="font-size:26px">${th.emoji}</div>
-        <div class="mono" style="font-size:8px;color:${th.color};margin-top:2px">${th.name}</div>
-        <div style="font-size:8px;color:#666">-${th.dmg}❤️</div>
-      </div>`;
-      d.addEventListener('click', e => { e.stopPropagation(); this._clickThreat(th.uid, e); });
-      d.addEventListener('touchstart', e => { e.preventDefault(); e.stopPropagation(); this._clickThreat(th.uid, e.touches[0]); }, {passive:false});
-      layer.appendChild(d);
+
+    // Reconcile DOM: only create/remove nodes as needed, never wipe all at once
+    const alive = this.threats.filter(t => t.alive);
+    const aliveUids = new Set(alive.map(t => String(t.uid)));
+
+    // Remove nodes for threats that are gone
+    Array.from(layer.children).forEach(el => {
+      if (!aliveUids.has(el.dataset.uid)) el.remove();
+    });
+
+    alive.forEach(th => {
+      const uidStr = String(th.uid);
+      let d = layer.querySelector(`[data-uid="${uidStr}"]`);
+
+      if (!d) {
+        // First time we see this threat — create the node
+        d = document.createElement('div');
+        d.dataset.uid = uidStr;
+        d.style.cssText = `position:absolute;left:${th.x}%;top:${th.y}%;transform:translate(-50%,-50%);z-index:8;cursor:crosshair;animation:threatIn .3s ease-out;transition:left .08s linear,top .08s linear`;
+        d.innerHTML = `<div style="background:${th.color}18;border:2px solid ${th.color}77;border-radius:12px;padding:8px 12px;text-align:center;box-shadow:0 0 18px ${th.color}44">
+          <div style="font-size:26px">${th.emoji}</div>
+          <div class="mono" style="font-size:8px;color:${th.color};margin-top:2px">${th.name}</div>
+          <div style="font-size:8px;color:#666">-${th.dmg}❤️</div>
+        </div>`;
+        d.addEventListener('click', e => { e.stopPropagation(); this._clickThreat(th.uid, e); });
+        d.addEventListener('touchstart', e => { e.preventDefault(); e.stopPropagation(); this._clickThreat(th.uid, e.touches[0]); }, {passive:false});
+        layer.appendChild(d);
+      } else if (th.exploding) {
+        // Switch to explode animation once, without recreating the element
+        if (d.dataset.exploding !== '1') {
+          d.dataset.exploding = '1';
+          d.style.animation = 'explodeOut .45s ease-out forwards';
+          d.style.pointerEvents = 'none';
+        }
+      } else {
+        // Just update position — no animation reset
+        d.style.left = th.x + '%';
+        d.style.top  = th.y + '%';
+      }
     });
   },
 

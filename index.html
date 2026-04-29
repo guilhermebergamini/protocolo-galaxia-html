@@ -85,6 +85,13 @@
       <span id="hud-boss-warn" style="color:#ff00ff;font-size:10px;display:none;animation:warnBlink 1s infinite">⚡ BOSS na próxima!</span>
       <span id="hud-effects" style="display:flex;gap:4px;flex-wrap:wrap"></span>
     </div>
+    <!-- Barra de progresso da fase -->
+    <div style="display:flex;align-items:center;gap:7px;flex:1;min-width:120px;max-width:200px;justify-content:flex-end">
+      <span id="hud-phase-label" style="color:#7799bb;font-size:10px;white-space:nowrap">Fase 1/10</span>
+      <div style="width:72px;height:5px;background:#1a2540;border-radius:3px;overflow:hidden">
+        <div id="hud-phase-fill" style="height:100%;width:0%;background:#ffd700;transition:width .5s;border-radius:3px"></div>
+      </div>
+    </div>
     <div style="display:flex;gap:8px">
       <button class="btn" id="btn-encyc" style="background:#ffd70014;color:#ffd700;font-size:12px;padding:5px 11px;border:1px solid #ffd70030">
         📖 <span id="hud-encyc">0/3</span>
@@ -120,7 +127,7 @@
 </div>
 
 <!-- ═══════════════════════════════════════════════
-     SCREEN: GAME OVER
+     SCREEN: GAME OVER / VITÓRIA
 ════════════════════════════════════════════════ -->
 <div id="screen-gameover" class="screen hidden" style="
   background:radial-gradient(ellipse at 50% 50%,#1c0505,#03060f);
@@ -128,12 +135,13 @@
 ">
   <div class="stars-container" style="position:absolute;inset:0;pointer-events:none"></div>
   <div style="text-align:center;z-index:2;animation:slideUp .7s ease-out">
-    <div style="font-size:72px;margin-bottom:10px">💥</div>
-    <h1 class="mono" style="font-size:30px;color:#ff4444;letter-spacing:5px;margin-bottom:12px">GAME OVER</h1>
+    <div id="go-title-icon" style="font-size:72px;margin-bottom:10px">💥</div>
+    <h1 id="go-title-text" class="mono" style="font-size:30px;color:#ff4444;letter-spacing:5px;margin-bottom:12px">GAME OVER</h1>
     <div style="display:flex;gap:20px;justify-content:center;flex-wrap:wrap;margin-bottom:20px">
       <div class="card" style="padding:12px 18px;text-align:center;min-width:90px"><div style="color:#668899;font-size:10px">⭐ Pontos</div><div class="mono" id="go-score"  style="color:#ffd700;font-size:20px;font-weight:700">0</div></div>
       <div class="card" style="padding:12px 18px;text-align:center;min-width:90px"><div style="color:#668899;font-size:10px">🏆 Recorde</div><div class="mono" id="go-highscore" style="color:#ffd700;font-size:20px;font-weight:700">0</div></div>
       <div class="card" style="padding:12px 18px;text-align:center;min-width:90px"><div style="color:#668899;font-size:10px">📡 Nível</div><div class="mono" id="go-level"  style="color:#ffd700;font-size:20px;font-weight:700">1</div></div>
+      <div class="card" style="padding:12px 18px;text-align:center;min-width:90px"><div style="color:#668899;font-size:10px">🌌 Fase</div><div class="mono" id="go-phase" style="color:#ffd700;font-size:20px;font-weight:700">1/10</div></div>
       <div class="card" style="padding:12px 18px;text-align:center;min-width:90px"><div style="color:#668899;font-size:10px">🔄 Rodadas</div><div class="mono" id="go-rounds" style="color:#ffd700;font-size:20px;font-weight:700">0</div></div>
     </div>
     <div id="go-record" class="hidden" style="color:#ffd700;font-size:14px;margin-bottom:12px">🎉 NOVO RECORDE!</div>
@@ -187,9 +195,32 @@
 <!-- ═══════════════════════════════════════════════
      SCRIPTS (ordem importa!)
 ════════════════════════════════════════════════ -->
+<script>
+// ── Comunicação com a plataforma (Manual §8) ──
+let scoreSent = false;
+function sendFinalScore({ score, difficulty } = {}) {
+  if (scoreSent) return;
+  try {
+    window.parent.postMessage({ type: 'C4A_GAME_SCORE', payload: { score, difficulty } }, '*');
+    scoreSent = true;
+  } catch (error) {
+    console.log('⚠️ Falha ao enviar score:', error?.message || error);
+  }
+}
+
+function getPlatformDifficulty() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const d = params.get('difficulty');
+    const valid = ['Muito Fácil','Fácil','Médio','Difícil','Muito Difícil'];
+    return valid.includes(d) ? d : 'Médio';
+  } catch { return 'Médio'; }
+}
+</script>
 <script src="js/data.js"></script>
 <script src="js/helpers.js"></script>
 <script src="js/state.js"></script>
+<script src="js/phases.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/boss.js"></script>
 <script src="js/game.js"></script>

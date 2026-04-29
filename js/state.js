@@ -4,13 +4,19 @@
 
 const State = {
   // Métricas
-  score:     0,
-  coins:     30,
-  energy:    100,
-  level:     1,
-  round:     0,
-  streak:    0,
-  highScore: 0,
+  score:        0,
+  coins:        30,
+  energy:       100,
+  level:        1,
+  round:        0,
+  streak:       0,
+  highScore:    0,
+
+  // Sistema de fases
+  phase:        1,          // fase atual (1–10)
+  roundInPhase: 0,          // rodadas concluídas dentro da fase atual
+  scoreAtPhaseStart: 0,     // score acumulado antes da fase começar (para normalização)
+  maxScore:     0,          // maior score já atingido (para highscore 0-100)
 
   // Efeitos ativos da shop
   effects: {},
@@ -35,15 +41,18 @@ const State = {
 
   // ── Resetar para nova partida ──
   reset() {
-    this.score   = 0;
-    this.coins   = 30;
-    this.energy  = 100;
-    this.level   = 1;
-    this.round   = 0;
-    this.streak  = 0;
-    this.effects = {};
-    this.log     = [];
-    this.encyclopedia = {};
+    this.score              = 0;
+    this.coins              = 30;
+    this.energy             = 100;
+    this.level              = 1;
+    this.round              = 0;
+    this.streak             = 0;
+    this.phase              = 1;
+    this.roundInPhase       = 0;
+    this.scoreAtPhaseStart  = 0;
+    this.effects            = {};
+    this.log                = [];
+    this.encyclopedia       = {};
   },
 
   // ── Log ──

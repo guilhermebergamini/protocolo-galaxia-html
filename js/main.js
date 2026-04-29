@@ -53,6 +53,8 @@ function buildDebug() {
     ['score',        State.score],
     ['coins',        State.coins],
     ['energy',       State.energy],
+    ['phase',        `${State.phase}/${TOTAL_PHASES}`],
+    ['roundInPhase', `${State.roundInPhase}/${getCurrentPhase().rounds}`],
     ['level',        State.level],
     ['round',        State.round],
     ['mode',         Game.mode || '—'],
@@ -77,7 +79,7 @@ function buildDebug() {
     ['💰+50',        () => { State.coins += 50;  UI.refreshHUD(); State.addLog('+50 moedas injetadas','info'); }],
     ['🔋Max HP',     () => { State.energy = 100; UI.refreshHUD(); State.addLog('Energia cheia','info'); }],
     ['💀Zero HP',    () => { State.energy = 0;   UI.refreshHUD(); Game.gameOver(); }],
-    ['⬆️+Nível',    () => { State.level++;       UI.refreshHUD(); State.addLog(`Nível ${State.level}`,'info'); }],
+    ['⬆️+Fase',      () => { Game._onBossDefeated(); },],
     ['📦Classify',   () => { showScreen('game'); Game.mode='classify'; Game._startClassify(); }],
     ['🚀Mission',    () => { showScreen('game'); Game.mode='mission';  Game._startMission(); }],
     ['🛡️Defense',   () => { showScreen('game'); Game.mode='defense';  Game._startDefense(); }],
@@ -86,7 +88,7 @@ function buildDebug() {
       State.round++;
       Game.mode='defense'; Game.isBoss=true;
       Game._setModeLabel('defense',true);
-      Boss.start(State.level, () => Game.nextRound());
+      Boss.start(State.level, () => Game._onBossDefeated());
     }],
     ['📖 Integer',  () => { State.encyclopedia['Integer']=true; UI.refreshHUD(); UI.showEncycPopup('Integer'); }],
     ['📖 String',   () => { State.encyclopedia['String'] =true; UI.refreshHUD(); UI.showEncycPopup('String');  }],

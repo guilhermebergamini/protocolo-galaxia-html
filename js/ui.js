@@ -51,10 +51,11 @@ const UI = {
       stk.textContent = s.streak >= 3 ? '🔥×' + s.streak : '';
       stk.style.display = s.streak >= 3 ? 'inline' : 'none';
     }
-    // Boss next warning
+    // Boss next warning — agora baseado na última rodada da fase
     const bossWarn = document.getElementById('hud-boss-warn');
     if (bossWarn) {
-      const show = s.round > 0 && s.round % 10 === 9;
+      const phaseCfg = getCurrentPhase();
+      const show = phaseCfg.hasBoss && s.roundInPhase === phaseCfg.rounds - 2;
       bossWarn.style.display = show ? 'inline' : 'none';
     }
     // Effects badges
@@ -68,6 +69,50 @@ const UI = {
         badges.appendChild(b);
       });
     }
+
+    // Barra de progresso de fases
+    const phaseFill  = document.getElementById('hud-phase-fill');
+    const phaseLabel = document.getElementById('hud-phase-label');
+    const phaseCfg   = getCurrentPhase();
+    if (phaseFill && phaseLabel) {
+      const pct = Math.round((s.roundInPhase / phaseCfg.rounds) * 100);
+      phaseFill.style.width = pct + '%';
+      phaseLabel.textContent = `Fase ${s.phase}/${TOTAL_PHASES}`;
+    }
+  },
+
+  // ── Transição entre fases ──────────────────────
+  showPhaseTransition(phase, name, onDone) {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `
+      position:fixed;inset:0;z-index:999;
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      background:rgba(3,6,15,.92);backdrop-filter:blur(18px);
+      animation:slideUp .5s ease-out;
+    `;
+    overlay.innerHTML = `
+      <div style="text-align:center">
+        <div style="font-size:13px;color:#00e5ff88;letter-spacing:6px;margin-bottom:10px">FASE ${phase - 1} CONCLUÍDA</div>
+        <div style="font-size:52px;margin-bottom:14px">🌌</div>
+        <div style="font-size:28px;font-weight:800;color:#00e5ff;letter-spacing:3px;margin-bottom:6px">FASE ${phase}</div>
+        <div style="font-size:16px;color:#7799bb;margin-bottom:28px">${name}</div>
+        <div id="phase-progress-dots" style="display:flex;gap:8px;justify-content:center;margin-bottom:24px">
+          ${Array.from({length: TOTAL_PHASES}, (_, i) => {
+            const done = i < phase - 1;
+            const cur  = i === phase - 1;
+            return `<div style="width:${cur?18:10}px;height:10px;border-radius:5px;background:${done?'#00e5ff':cur?'#ffd700':'rgba(255,255,255,.12)'};transition:all .4s"></div>`;
+          }).join('')}
+        </div>
+        <div style="color:#334455;font-size:12px;animation:pulse 1s infinite">preparando missão…</div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    setTimeout(() => {
+      overlay.style.animation = 'none';
+      overlay.style.opacity   = '0';
+      overlay.style.transition = 'opacity .4s';
+      setTimeout(() => { overlay.remove(); onDone(); }, 420);
+    }, 2200);
   },
 
   // ── Log no painel debug ───────────────────────
