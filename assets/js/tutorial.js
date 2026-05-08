@@ -1,133 +1,99 @@
 // ═══════════════════════════════════════════════════
-//  js/tutorial.js  –  Tutorial interativo
+//  js/tutorial.js  –  Tutorial interativo (10 passos)
 // ═══════════════════════════════════════════════════
 
 const Tutorial = {
-    active: false,
-    step:   0,
-  
-    // Passos do tutorial — cada um é uma tela explicativa
-    steps: [
-      {
-        icon: '🛰️',
-        title: 'Bem-vindo ao Protocolo Galáxia!',
-        text: 'Você é o operador de uma estação espacial que gerencia o tráfego de dados do sistema solar. Sua missão é garantir que os dados cheguem aos destinos corretos e proteger a base de ataques cibernéticos.',
-        highlight: null,
-      },
-      {
-        icon: '🌌',
-        title: '10 Fases para Completar',
-        text: 'O jogo tem 10 fases progressivas. Cada fase fica mais desafiadora: mais pacotes para classificar, mais ameaças para destruir e bosses mais poderosos. Complete todas as fases para vencer!',
-        highlight: null,
-      },
-      {
-        icon: '📦',
-        title: 'Modo Classificação',
-        text: 'Pacotes de dados aparecem na tela com um tipo (Integer, String, Boolean…). Você deve arrastá-los — ou no modo 1 dedo, tocá-los e depois tocar no destino correto — para as caixas certas. Cada acerto dá pontos; cada erro consome energia!',
-        highlight: null,
-      },
-      {
-        icon: '🚀',
-        title: 'Modo Missão',
-        text: 'Um planeta precisa receber dados. Você verá as características da missão e deve escolher o protocolo correto: TCP (confiável, com confirmação) ou UDP (rápido, sem garantia). Escolha errado e perde energia!',
-        highlight: null,
-      },
-      {
-        icon: '🛡️',
-        title: 'Modo Defesa',
-        text: 'Malwares, vírus e worms avançam em direção à sua base. Toque neles para destruí-los antes que cheguem! Use a Criptografia para criar um escudo e o Firewall para queimá-los. Se chegarem à base, você perde energia!',
-        highlight: null,
-      },
-      {
-        icon: '👾',
-        title: 'Boss de Fase',
-        text: 'A última rodada de cada fase (exceto a primeira) é um Boss! Ele é mais resistente e ataca com projéteis. Use o canhão para destruí-lo movendo o cursor/dedo e clicando para atirar. Derrote o Boss para avançar de fase!',
-        highlight: null,
-      },
-      {
-        icon: '⚡',
-        title: 'Energia e Game Over',
-        text: 'Sua barra de energia (mostrada no topo) é sua vida. Erros de classificação, missões erradas e ameaças que chegam à base consomem energia. Se chegar a zero, o jogo termina. Compre escudos na loja para recuperar energia!',
-        highlight: null,
-      },
-      {
-        icon: '🛒',
-        title: 'A Loja',
-        text: 'Ganhe moedas destruindo ameaças e completando rodadas. Use-as na Loja (🛒) para comprar: Escudo (+25% energia), Disparo Automático (destrói ameaças sozinho), Criptografia (escudo de 30s) e Multiplicador de moedas (2x por 60s).',
-        highlight: null,
-      },
-      {
-        icon: '♿',
-        title: 'Modo 1 Dedo',
-        text: 'Ative o Modo 1 Dedo nas configurações (⚙️) para jogar tudo com apenas um toque. No modo Classificação, toque em um pacote para selecioná-lo, depois toque no destino. Na Defesa, toque nas ameaças para destruí-las. No Boss, toque em qualquer lugar para atirar!',
-        highlight: null,
-      },
-      {
-        icon: '🎯',
-        title: 'Pronto para jogar!',
-        text: 'Você está pronto! Lembre-se: quanto mais fases completar com energia alta, maior será sua pontuação final (0 a 100). Boa sorte, Operador — a galáxia conta com você!',
-        highlight: null,
-      },
-    ],
-  
-    // ── Abrir tutorial ──
-    open(fromSettings = false) {
-      this.active    = true;
-      this.step      = 0;
-      this.fromSettings = fromSettings;
-      this._render();
-      document.getElementById('screen-tutorial').classList.remove('hidden');
-    },
-  
-    // ── Fechar tutorial ──
-    close() {
-      this.active = false;
-      document.getElementById('screen-tutorial').classList.add('hidden');
-      if (this.fromSettings) showScreen('settings');
-    },
-  
-    // ── Avançar passo ──
-    next() {
-      if (this.step < this.steps.length - 1) {
-        this.step++;
-        this._render();
-      } else {
-        this.close();
-      }
-    },
-  
-    // ── Voltar passo ──
-    prev() {
-      if (this.step > 0) {
-        this.step--;
-        this._render();
-      }
-    },
-  
-    // ── Renderizar passo atual ──
-    _render() {
-      const s    = this.steps[this.step];
-      const tot  = this.steps.length;
-      const cur  = this.step + 1;
-      const isLast = this.step === tot - 1;
-  
-      // Ícone e conteúdo
-      document.getElementById('tut-icon').textContent  = s.icon;
-      document.getElementById('tut-title').textContent = s.title;
-      document.getElementById('tut-text').textContent  = s.text;
-  
-      // Pontos de progresso
-      const dots = document.getElementById('tut-dots');
+  step: 0,
+  fromSettings: false,
+
+  steps: [
+    { icon:'🛰️', title:'Bem-vindo ao Protocolo Galáxia!',
+      text:'Você é o operador de uma estação espacial que gerencia o tráfego de dados do sistema solar. Proteja a base, classifique pacotes e complete as missões!',
+      tip: null },
+    { icon:'🌌', title:'10 Fases Progressivas',
+      text:'O jogo tem 10 fases. Cada uma fica mais difícil: mais pacotes, mais ameaças e bosses mais poderosos. Complete todas as fases para ganhar pontuação máxima!',
+      tip: '💡 Quanto mais fases completar com energia alta, maior sua nota final (0–100).' },
+    { icon:'📦', title:'Classificação de Dados',
+      text:'Pacotes aparecem com um tipo (Integer, String, Boolean…). Arraste-os para o contêiner correto. Acerto = pontos. Erro = perde energia!',
+      tip: '♿ Modo 1 Dedo: toque no pacote para selecioná-lo, depois toque no destino.' },
+    { icon:'🚀', title:'Missões de Envio',
+      text:'Um planeta precisa receber dados. Escolha o protocolo certo: TCP (confiável, com confirmação) ou UDP (rápido, sem garantia). Leia a dica em amarelo!',
+      tip: '♿ Modo 1 Dedo: toque em TCP ou UDP — os mesmos botões grandes na tela.' },
+    { icon:'🛡️', title:'Defesa Cibernética',
+      text:'Malwares avançam em direção à base. Toque neles para destruí-los! Use Criptografia (escudo) e Firewall. Se chegarem à base, você perde energia.',
+      tip: '♿ Modo 1 Dedo: os botões no painel inferior listam as ameaças — toque para destruir.' },
+    { icon:'👾', title:'Boss de Fase',
+      text:'A última rodada de cada fase tem um Boss. Clique ou toque nele para atacar. Use WASD/setas — ou toque na arena — para esquivar dos projéteis.',
+      tip: '♿ Modo 1 Dedo: botão "🔫 Atirar!" aparece no painel. Toque na arena para mover a nave.' },
+    { icon:'⚡', title:'Energia e Vidas',
+      text:'A barra de energia no topo é sua vida. Erros e ameaças a reduzem. Se zerar, é Game Over. Compre Escudo na Loja para recuperar +25% de energia!',
+      tip: null },
+    { icon:'🛒', title:'A Loja',
+      text:'Ganhe moedas destruindo ameaças e completando rodadas. Compre: Escudo (+25% energia), Disparo Automático, Criptografia (30s) ou 2x Moedas (60s).',
+      tip: null },
+    { icon:'♿', title:'Modo 1 Dedo',
+      text:'Nas Configurações (⚙️) ative o Modo 1 Dedo. Todo o jogo funcionará com um único toque — sem precisar arrastar. Ideal para qualquer tipo de deficiência motora.',
+      tip: '💡 Atalhos: teclas 1–9 ativam as ações do painel inferior.' },
+    { icon:'🎯', title:'Pronto para jogar!',
+      text:'Você está pronto! Boa sorte, Operador — a galáxia conta com você. Use ⚙️ para acessar configurações e este tutorial a qualquer momento.',
+      tip: null },
+  ],
+
+  open(fromSettings = false) {
+    this.fromSettings = fromSettings;
+    this.step = 0;
+    this._render();
+    showScreen('tutorial');
+  },
+
+  close() {
+    showScreen(this.fromSettings ? 'settings' : 'menu');
+  },
+
+  next() {
+    if (this.step < this.steps.length - 1) { this.step++; this._render(); }
+    else this.close();
+  },
+
+  prev() {
+    if (this.step > 0) { this.step--; this._render(); }
+  },
+
+  _render() {
+    const s   = this.steps[this.step];
+    const tot = this.steps.length;
+    const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+
+    set('tut-icon',    s.icon);
+    set('tut-title',   s.title);
+    set('tut-text',    s.text);
+
+    const tipEl = document.getElementById('tut-tip');
+    if (tipEl) {
+      tipEl.textContent = s.tip || '';
+      tipEl.style.display = s.tip ? 'block' : 'none';
+    }
+
+    // Dots
+    const dots = document.getElementById('tut-dots');
+    if (dots) {
       dots.innerHTML = '';
       for (let i = 0; i < tot; i++) {
         const d = document.createElement('div');
-        d.style.cssText = `width:${i===this.step?22:8}px;height:8px;border-radius:4px;background:${i===this.step?'#00e5ff':i<this.step?'#00e5ff55':'rgba(255,255,255,.15)'};transition:all .3s`;
+        const active = i === this.step;
+        const done   = i < this.step;
+        d.style.cssText = `width:${active?22:8}px;height:8px;border-radius:4px;
+          background:${active?'#00e5ff':done?'#00e5ff55':'rgba(255,255,255,.15)'};transition:all .3s`;
         dots.appendChild(d);
       }
-  
-      // Botões
-      document.getElementById('tut-btn-prev').style.visibility = this.step > 0 ? 'visible' : 'hidden';
-      document.getElementById('tut-btn-next').textContent = isLast ? '✅ Entendido!' : 'Próximo →';
-      document.getElementById('tut-counter').textContent  = `${cur} / ${tot}`;
-    },
-  };
+    }
+
+    const btnPrev = document.getElementById('tut-btn-prev');
+    const btnNext = document.getElementById('tut-btn-next');
+    if (btnPrev) btnPrev.style.visibility = this.step > 0 ? 'visible' : 'hidden';
+    if (btnNext) btnNext.textContent = this.step === tot-1 ? '✅ Entendido!' : 'Próximo →';
+
+    const ctr = document.getElementById('tut-counter');
+    if (ctr) ctr.textContent = `${this.step+1} / ${tot}`;
+  },
+};

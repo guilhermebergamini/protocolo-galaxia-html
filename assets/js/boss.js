@@ -62,8 +62,13 @@ const Boss = {
       let { x, y } = this.playerPos;
       if (k['w'] || k['arrowup']) y = clamp(y - spd, 5, 90);
       if (k['s'] || k['arrowdown']) y = clamp(y + spd, 5, 90);
-      if (k['a'] || k['arrowleft']) x = clamp(x - spd, 2, 55);
-      if (k['d'] || k['arrowright']) x = clamp(x + spd, 2, 55);
+      const autoShootEnabled = window.Settings?.data?.autoShoot;
+
+      if (!autoShootEnabled) {
+        if (k['a'] || k['arrowleft']) x = clamp(x - spd, 2, 55);
+        if (k['d'] || k['arrowright']) x = clamp(x + spd, 2, 55);
+      }
+
       this.playerPos = { x, y };
       this._renderPlayer();
     }, 30);
@@ -75,6 +80,13 @@ const Boss = {
       this.pos = { x: 72 + Math.sin(this.angle) * 8, y: 45 + Math.cos(this.angle * 0.7) * 15 };
       this._renderBoss();
     }, 50);
+
+    // Auto shoot accessibility
+    if (window.Settings?.data?.autoShoot) {
+      State.timers.autoShootLoop = setInterval(() => {
+        if (this.active) this.shoot();
+      }, 500);
+    }
 
     // Projectile + collision loop (20fps)
     State.timers.projLoop = setInterval(() => {
