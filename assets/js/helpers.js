@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════
 //  js/helpers.js  –  Funções utilitárias puras
-// ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════=
 
 const getRnd   = arr => arr[Math.floor(Math.random() * arr.length)];
 const randInt  = (a,b) => Math.floor(Math.random() * (b - a + 1)) + a;

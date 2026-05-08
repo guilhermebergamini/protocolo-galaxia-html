@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════
 //  js/phases.js  –  Sistema de 10 Fases + Dificuldade
-// ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════=
 
 // Cada fase define quantas rodadas ela tem e os parâmetros
 // de dificuldade aplicados durante aquela fase.

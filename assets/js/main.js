@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════
 //  js/main.js  –  Bootstrap, roteamento de telas,
 //                 vinculação de eventos globais
-// ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════=
 
 // ── Roteador de telas ──────────────────────────────
 const SCREENS = ['menu','game','shop','gameover','debug'];

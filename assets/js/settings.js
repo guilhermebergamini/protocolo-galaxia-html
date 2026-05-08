@@ -1,4 +1,8 @@
+//Settings.js - Gerencia as configurações de acessibilidade do jogo, como tamanho da fonte, modo de cor e volume da música.
 
+// ═══════════════════════════════════════════════════
+//  js/settings.js  –  Configurações de acessibilidade
+// ═══════════════════════════════════════════════════=
 window.Settings = {
   data: {
     fontScale: 1,
