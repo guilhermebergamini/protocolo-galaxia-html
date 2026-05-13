@@ -1,23 +1,61 @@
 // ═══════════════════════════════════════════════════
 //  js/data.js  –  Dados estáticos do jogo
 // ═══════════════════════════════════════════════════=
+const ASSET_BASE = "assets/img/";
+
+const DATA_VISUALS = {
+  background: `${ASSET_BASE}background-armazem-dados.png`,
+  containers: {
+    Integer: `${ASSET_BASE}container-integer.png`,
+    String: `${ASSET_BASE}container-string.png`,
+    Boolean: `${ASSET_BASE}container-boolean.png`,
+  },
+  packets: {
+    Integer: {
+      "42": `${ASSET_BASE}42-Integer.png`,
+      "7": `${ASSET_BASE}7-integer.png`,
+      "-15": `${ASSET_BASE}15-integer.png`,
+      "256": `${ASSET_BASE}256-integer.png`,
+      "1024": `${ASSET_BASE}1024-integer.png`,
+    },
+    String: {
+      "Marte": `${ASSET_BASE}Marte-str.png`,
+      "Missão": `${ASSET_BASE}missao-str.png`,
+      "Olá": `${ASSET_BASE}ola-str.png`,
+      "Galáxia": `${ASSET_BASE}galaxia-str.png`,
+      "Protocolo": `${ASSET_BASE}protocolo-str.png`,
+    },
+    Boolean: {
+      "true": `${ASSET_BASE}true-bool.png`,
+      "false": `${ASSET_BASE}false-bool.png`,
+    },
+  },
+};
+
 const PACKET_TYPES = [
   {
     type: "Integer", label: "Inteiro", color: "#00e5ff",
     glow: "#00e5ff55", emoji: "🔢", bg: "#00e5ff14",
-    examples: ["42","7","-3","100","256","0","999","-15","88","3"],
+    containerImg: DATA_VISUALS.containers.Integer,
+    examples: ["42","7","-15","256","1024"],
   },
   {
     type: "String", label: "Texto", color: "#ff6ec7",
     glow: "#ff6ec755", emoji: "📝", bg: "#ff6ec714",
-    examples: ["Marte","Missão","Terra","Olá","Nebulosa","Cometa","Saturno","Lua","Cosmos","Base"],
+    containerImg: DATA_VISUALS.containers.String,
+    examples: ["Marte","Missão","Olá","Galáxia","Protocolo"],
   },
   {
     type: "Boolean", label: "Lógico", color: "#69ff47",
     glow: "#69ff4755", emoji: "⚡", bg: "#69ff4714",
-    examples: ["Sim","Não","True","False","Ativo","Inativo","Ligado","Ok","Erro","Stand-by"],
+    containerImg: DATA_VISUALS.containers.Boolean,
+    examples: ["true","false"],
   },
 ];
+
+function getPacketImage(type, value) {
+  return DATA_VISUALS.packets?.[type]?.[value] || null;
+}
 
 const ENCYCLOPEDIA = {
   Integer: {

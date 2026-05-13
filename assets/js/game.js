@@ -191,20 +191,20 @@ const Game = {
     }).join('');
 
     const bins = PACKET_TYPES.map(tp => `
-      <div data-bin="${tp.type}" style="width:108px;padding:13px 8px;text-align:center;background:${tp.bg};border:2px solid ${tp.color}40;border-radius:14px;transition:all .2s;cursor:default">
-        <div style="font-size:30px">${tp.emoji}</div>
-        <div style="color:${tp.color};font-size:13px;font-weight:700;margin-top:4px">${tp.label}</div>
-        <div class="mono" style="color:${tp.color}88;font-size:9px;margin-top:2px">${tp.type}</div>
+      <div class="data-bin" data-bin="${tp.type}" style="--bin-color:${tp.color};--bin-glow:${tp.glow};background:${tp.bg};border-color:${tp.color}66">
+        <img class="data-bin-img" src="${tp.containerImg}" alt="Contêiner ${tp.type}" draggable="false">
+        <div class="data-bin-label" style="color:${tp.color}">${tp.label}</div>
+        <div class="mono data-bin-type" style="color:${tp.color}aa">${tp.type}</div>
       </div>`).join('');
 
     container.innerHTML = `
-      <div id="classify-area" style="flex:1;position:relative;overflow:hidden">
+      <div id="classify-area" class="classify-station" style="background-image:linear-gradient(rgba(3,6,15,.28),rgba(3,6,15,.62)),url('${DATA_VISUALS.background}')">
         <div style="position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:8;display:flex;gap:7px">${dots}</div>
-        <div style="position:absolute;top:36px;left:50%;transform:translateX(-50%);z-index:8;background:#00e5ff08;border:1px solid #00e5ff18;border-radius:8px;padding:4px 14px;font-size:11px;color:#5599bb;white-space:nowrap">
+        <div class="classify-instruction">
           Arraste os pacotes para o contêiner correto ↓
         </div>
         <div id="packets-layer" style="position:absolute;inset:0;z-index:6"></div>
-        <div id="bins-row" style="position:absolute;bottom:14px;left:50%;transform:translateX(-50%);z-index:7;display:flex;gap:12px">${bins}</div>
+        <div id="bins-row" class="bins-row">${bins}</div>
       </div>`;
 
     this._renderPackets();
@@ -218,23 +218,26 @@ const Game = {
     this.packets.filter(p => !p.done).forEach(pkt => {
       const tp = PACKET_TYPES.find(t => t.type === pkt.type);
       const isDrag = this.draggingId === pkt.id;
+      const areaRect = document.getElementById('classify-area')?.getBoundingClientRect();
+      const dragLeft = areaRect ? (this.dragPos.x - areaRect.left - 48) : (this.dragPos.x - 48);
+      const dragTop = areaRect ? (this.dragPos.y - areaRect.top - 48) : (this.dragPos.y - 48);
       const p = document.createElement('div');
       p.dataset.pktId = pkt.id;
       p.style.cssText = `
         position:absolute;
-        left:${isDrag ? this.dragPos.x-44+'px' : pkt.x+'%'};
-        top:${isDrag ? this.dragPos.y-35+'px' : pkt.y+'%'};
+        left:${isDrag ? dragLeft+'px' : pkt.x+'%'};
+        top:${isDrag ? dragTop+'px' : pkt.y+'%'};
         z-index:${isDrag ? 100 : 6};
         cursor:${isDrag ? 'grabbing' : 'grab'};
         transition:${isDrag ? 'none' : 'all .28s'};
         animation:${pkt.shake ? 'shake .4s' : isDrag ? 'none' : `packetBob ${2.5+pkt.id*.3}s ease-in-out infinite`};
         user-select:none;
       `;
+      const packetImg = getPacketImage(pkt.type, pkt.value);
       p.innerHTML = `
-        <div style="background:${isDrag ? tp.color+'28' : tp.bg};border:2px solid ${isDrag ? tp.color : tp.color+'55'};border-radius:14px;padding:10px 18px;box-shadow:${isDrag ? `0 0 24px ${tp.glow},0 10px 36px #000c` : `0 0 10px ${tp.glow}55`};display:flex;flex-direction:column;align-items:center;gap:3px;min-width:82px;transform:${isDrag?'scale(1.18) rotate(-4deg)':'scale(1)'};transition:transform .15s">
-          <span style="font-size:22px">${tp.emoji}</span>
-          <span class="mono" style="color:#fff;font-size:16px;font-weight:700">${pkt.value}</span>
-          ${State.effects.scanner ? `<span style="color:${tp.color};font-size:8px;letter-spacing:1px">${tp.type}</span>` : ''}
+        <div class="data-packet-card" style="--packet-color:${tp.color};--packet-glow:${tp.glow};transform:${isDrag?'scale(1.16) rotate(-4deg)':'scale(1)'}">
+          ${packetImg ? `<img class="data-packet-img" src="${packetImg}" alt="Pacote ${pkt.type}: ${pkt.value}" draggable="false">` : `<span style="font-size:38px">${tp.emoji}</span><span class="mono" style="color:#fff;font-size:16px;font-weight:700">${pkt.value}</span>`}
+          ${State.effects.scanner ? `<span class="data-packet-scanner" style="color:${tp.color}">${tp.type}</span>` : ''}
         </div>`;
 
       p.addEventListener('mousedown',  e => this._onPktDown(e, pkt.id));
