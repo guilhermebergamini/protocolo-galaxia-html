@@ -11,6 +11,17 @@ function showScreen(name) {
     const el = document.getElementById('screen-' + s);
     if (el) el.classList.toggle('hidden', s !== name);
   });
+
+  if (window.A11y) {
+    setTimeout(() => {
+      A11y.refresh();
+
+      const screen = document.getElementById('screen-' + name);
+      const first = screen?.querySelector('button:not([disabled]), [role="button"][tabindex="0"], [tabindex="0"]');
+
+      if (A11y.keyboardMode && first) first.focus();
+    }, 80);
+  }
 }
 
 // ── Construir a shop ───────────────────────────────

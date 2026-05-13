@@ -191,7 +191,7 @@ const Game = {
     }).join('');
 
     const bins = PACKET_TYPES.map(tp => `
-      <div class="data-bin" data-bin="${tp.type}" style="--bin-color:${tp.color};--bin-glow:${tp.glow};background:${tp.bg};border-color:${tp.color}66">
+      <div class="data-bin" data-bin="${tp.type}" data-a11y-interactive="true" role="button" tabindex="0" aria-label="Contêiner ${tp.label}. Pressione Enter para enviar o dado selecionado para ${tp.type}" style="--bin-color:${tp.color};--bin-glow:${tp.glow};background:${tp.bg};border-color:${tp.color}66">
         <img class="data-bin-img" src="${tp.containerImg}" alt="Contêiner ${tp.type}" draggable="false">
         <div class="data-bin-label" style="color:${tp.color}">${tp.label}</div>
         <div class="mono data-bin-type" style="color:${tp.color}aa">${tp.type}</div>
@@ -201,14 +201,22 @@ const Game = {
       <div id="classify-area" class="classify-station" style="background-image:linear-gradient(rgba(3,6,15,.28),rgba(3,6,15,.62)),url('${DATA_VISUALS.background}')">
         <div style="position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:8;display:flex;gap:7px">${dots}</div>
         <div class="classify-instruction">
-          Arraste os pacotes para o contêiner correto ↓
+          Arraste ou use Tab/Setas + Enter: selecione o dado e depois o contêiner ↓
         </div>
         <div id="packets-layer" style="position:absolute;inset:0;z-index:6"></div>
         <div id="bins-row" class="bins-row">${bins}</div>
       </div>`;
 
+    if (window.A11y) {
+      A11y.createHelpText(
+        document.getElementById('classify-area'),
+        'Teclado: Tab/Setas navegam · Enter seleciona dado · Enter no contêiner envia'
+      );
+    }
+
     this._renderPackets();
     this._attachDragEvents();
+    this._attachKeyboardClassifyEvents();
   },
 
   _renderPackets() {
@@ -223,6 +231,11 @@ const Game = {
       const dragTop = areaRect ? (this.dragPos.y - areaRect.top - 48) : (this.dragPos.y - 48);
       const p = document.createElement('div');
       p.dataset.pktId = pkt.id;
+      p.dataset.a11yInteractive = 'true';
+      p.className = 'data-packet-wrapper';
+      p.setAttribute('role', 'button');
+      p.setAttribute('tabindex', '0');
+      p.setAttribute('aria-label', `Dado ${pkt.value}, tipo ${pkt.type}. Pressione Enter para selecionar.`);
       p.style.cssText = `
         position:absolute;
         left:${isDrag ? dragLeft+'px' : pkt.x+'%'};
@@ -235,15 +248,74 @@ const Game = {
       `;
       const packetImg = getPacketImage(pkt.type, pkt.value);
       p.innerHTML = `
-        <div class="data-packet-card" style="--packet-color:${tp.color};--packet-glow:${tp.glow};transform:${isDrag?'scale(1.16) rotate(-4deg)':'scale(1)'}">
+        <div class="data-packet-card" data-pkt-id="${pkt.id}" style="--packet-color:${tp.color};--packet-glow:${tp.glow};transform:${isDrag?'scale(1.16) rotate(-4deg)':'scale(1)'}">
           ${packetImg ? `<img class="data-packet-img" src="${packetImg}" alt="Pacote ${pkt.type}: ${pkt.value}" draggable="false">` : `<span style="font-size:38px">${tp.emoji}</span><span class="mono" style="color:#fff;font-size:16px;font-weight:700">${pkt.value}</span>`}
           ${State.effects.scanner ? `<span class="data-packet-scanner" style="color:${tp.color}">${tp.type}</span>` : ''}
         </div>`;
 
       p.addEventListener('mousedown',  e => this._onPktDown(e, pkt.id));
       p.addEventListener('touchstart', e => { e.preventDefault(); this._onPktDown(e, pkt.id); }, {passive:false});
+      p.addEventListener('click', e => {
+        if (window.A11y?.keyboardMode) {
+          e.preventDefault();
+          e.stopPropagation();
+          this._selectPacketByKeyboard(pkt.id);
+        }
+      });
+      p.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          this._selectPacketByKeyboard(pkt.id);
+        }
+      });
       layer.appendChild(p);
     });
+  },
+
+  _attachKeyboardClassifyEvents() {
+    document.querySelectorAll('[data-bin]').forEach(bin => {
+      bin.addEventListener('click', e => {
+        if (window.A11y?.selectedPacketId !== null) {
+          e.preventDefault();
+          e.stopPropagation();
+          this._dropSelectedPacketByKeyboard(bin.dataset.bin, bin);
+        }
+      });
+
+      bin.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          this._dropSelectedPacketByKeyboard(bin.dataset.bin, bin);
+        }
+      });
+    });
+  },
+
+  _selectPacketByKeyboard(id) {
+    const pkt = this.packets.find(p => p.id === id);
+    if (!pkt || pkt.done) return;
+
+    if (window.A11y) {
+      A11y.selectPacket(pkt.id, pkt.type, pkt.value);
+    }
+
+    State.addLog(`⌨️ Dado selecionado via teclado: "${pkt.value}"`, 'info');
+  },
+
+  _dropSelectedPacketByKeyboard(dropped, targetEl) {
+    if (!window.A11y || A11y.selectedPacketId === null) {
+      State.showToast('⌨️ Selecione primeiro um dado com Enter.', false);
+      A11y?.announce?.('Selecione primeiro um dado com Enter.', 'assertive');
+      return;
+    }
+
+    const rect = targetEl.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const id = Number(A11y.selectedPacketId);
+
+    A11y.clearPacketSelection();
+    this._handleClassifyDrop(id, dropped, cx, cy);
   },
 
   _attachDragEvents() {
@@ -296,51 +368,105 @@ const Game = {
 
   _onUp(e) {
     if (this.draggingId === null) return;
+
     const cx = e.clientX ?? e.changedTouches?.[0]?.clientX ?? 0;
     const cy = e.clientY ?? e.changedTouches?.[0]?.clientY ?? 0;
-    const pkt = this.packets.find(p => p.id === this.draggingId);
     const id = this.draggingId;
+
     this.draggingId = null;
-    if (!pkt || pkt.done) { this._renderPackets(); return; }
+
+    const pkt = this.packets.find(p => p.id === id);
+
+    if (!pkt || pkt.done) {
+      this._renderPackets();
+      return;
+    }
 
     let dropped = null;
+
     document.querySelectorAll('[data-bin]').forEach(b => {
       const r = b.getBoundingClientRect();
-      if (cx>=r.left && cx<=r.right && cy>=r.top && cy<=r.bottom) dropped=b.dataset.bin;
+
+      if (cx >= r.left && cx <= r.right && cy >= r.top && cy <= r.bottom) {
+        dropped = b.dataset.bin;
+      }
     });
 
-    if (!dropped) { this._renderPackets(); return; }
+    if (!dropped) {
+      this._renderPackets();
+      return;
+    }
+
+    this._handleClassifyDrop(id, dropped, cx, cy);
+  },
+
+  _handleClassifyDrop(id, dropped, cx, cy) {
+    const pkt = this.packets.find(p => p.id === id);
+
+    if (!pkt || pkt.done) {
+      this._renderPackets();
+      return;
+    }
 
     if (dropped === pkt.type) {
-      State.earnScore(25); State.earnCoins(6);
-      // Encyclopedia discovery
+      State.earnScore(25);
+      State.earnCoins(6);
+
       if (!State.encyclopedia[pkt.type]) {
         State.encyclopedia[pkt.type] = true;
         UI.refreshHUD();
         setTimeout(() => UI.showEncycPopup(pkt.type), 300);
         State.addLog(`📖 Descoberto: ${pkt.type}!`, 'success');
       }
+
       State.streak++;
-      if (State.streak % 3 === 0) { State.earnCoins(12); State.showToast(`🔥 Combo x${State.streak}! +12💰`, true); }
+
+      if (State.streak % 3 === 0) {
+        State.earnCoins(12);
+        State.showToast(`🔥 Combo x${State.streak}! +12💰`, true);
+      }
+
       State.addLog(`✅ "${pkt.value}" → ${dropped}`, 'success');
       State.showToast(`✅ ${dropped} correto! +25pts`, true);
       spawnParticle(cx, cy, '✅', '#69ff47');
-      this.packets = this.packets.map(p => p.id===id ? {...p,done:true} : p);
+
+      if (window.A11y) {
+        A11y.announce(`${pkt.value} classificado corretamente como ${dropped}.`, 'assertive');
+      }
+
+      this.packets = this.packets.map(p => p.id === id ? { ...p, done: true } : p);
       this.classifiedCnt++;
+
       if (this.classifiedCnt >= this.totalPkts) {
         setTimeout(() => this.nextRound(), 700);
-      } else { this._renderClassify(); }
+      } else {
+        this._renderClassify();
+
+        setTimeout(() => {
+          const nextPacket = document.querySelector('.data-packet-wrapper[tabindex="0"]');
+          if (window.A11y?.keyboardMode && nextPacket) nextPacket.focus();
+        }, 80);
+      }
     } else {
       const phaseCfg = getCurrentPhase();
+
       State.takeDmg(phaseCfg.classify.wrongDmg, () => this.gameOver());
-      State.streak = 0; UI.refreshHUD();
+      State.streak = 0;
+      UI.refreshHUD();
+
       State.addLog(`❌ "${pkt.value}" NÃO é ${dropped}! Era ${pkt.type}`, 'error');
       State.showToast(`❌ Era ${pkt.type}!`, false);
       spawnParticle(cx, cy, '❌', '#ff4444');
-      this.packets = this.packets.map(p => p.id===id ? {...p,shake:true} : p);
+
+      if (window.A11y) {
+        A11y.announce(`${pkt.value} não é ${dropped}. O tipo correto era ${pkt.type}.`, 'assertive');
+      }
+
+      this.packets = this.packets.map(p => p.id === id ? { ...p, shake: true } : p);
       this._renderPackets();
+
       setTimeout(() => {
-        this.packets = this.packets.map(p => p.id===id ? {...p,shake:false} : p);
+        this.packets = this.packets.map(p => p.id === id ? { ...p, shake: false } : p);
         this._renderPackets();
       }, 500);
     }
@@ -414,8 +540,28 @@ const Game = {
         </div>
       </div>`;
 
-    document.getElementById('btn-tcp').onclick = () => this._sendPacket('TCP');
-    document.getElementById('btn-udp').onclick = () => this._sendPacket('UDP');
+    const tcpBtn = document.getElementById('btn-tcp');
+    const udpBtn = document.getElementById('btn-udp');
+
+    tcpBtn.onclick = () => this._sendPacket('TCP');
+    udpBtn.onclick = () => this._sendPacket('UDP');
+
+    tcpBtn.setAttribute('aria-label', 'Escolher protocolo TCP. Use Enter para confirmar.');
+    udpBtn.setAttribute('aria-label', 'Escolher protocolo UDP. Use Enter para confirmar.');
+
+    tcpBtn.setAttribute('tabindex', '0');
+    udpBtn.setAttribute('tabindex', '0');
+
+    if (window.A11y) {
+      A11y.createHelpText(
+        document.querySelector('#mission-btns')?.parentElement,
+        'Teclado: Tab/Setas escolhem TCP ou UDP · Enter confirma'
+      );
+
+      setTimeout(() => {
+        if (A11y.keyboardMode) tcpBtn.focus();
+      }, 80);
+    }
   },
 
   _sendPacket(proto) {
@@ -458,6 +604,13 @@ const Game = {
     this.spawned = 0; this.noSecs = 0;
     State.addLog('⚠️ Defesa ativada!', 'warn');
     this._renderDefense();
+
+    if (window.A11y) {
+      A11y.createHelpText(
+        document.getElementById('defense-area'),
+        'Teclado: Tab/Setas navegam nas ameaças · Enter destrói'
+      );
+    }
 
     const maxSpawn   = defCfg.maxSpawn;
     const spawnDelay = defCfg.spawnDelay;
@@ -513,7 +666,7 @@ const Game = {
           <span id="def-nothreat-label" class="mono" style="color:#ffd700;font-size:11px;display:none"></span>
         </div>
         <div style="position:absolute;top:34px;left:50%;transform:translateX(-50%);z-index:9;background:#ff444410;border:1px solid #ff444422;border-radius:8px;padding:4px 14px;font-size:10px;color:#ff9999;white-space:nowrap">
-          ⚠️ Clique/toque nas ameaças! ${State.round % 10 === 9 ? '⚡ BOSS NA PRÓXIMA!' : ''}
+          ⚠️ Clique/toque ou use Tab/Setas + Enter nas ameaças! ${State.round % 10 === 9 ? '⚡ BOSS NA PRÓXIMA!' : ''}
         </div>
         <!-- Station -->
         <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:6;text-align:center">
@@ -531,7 +684,7 @@ const Game = {
             <div style="color:#555;font-size:9px">Clique nas ameaças!</div>
             <div style="color:${State.effects.autofire?'#69ff47':'#444'};font-size:9px">${State.effects.autofire?'✅ Auto':'Manual'}</div>
           </div>
-          <button class="btn" id="crypto-btn" style="background:${this.cryptoOn?'#00e5ff14':'rgba(255,255,255,.04)'};border:2px solid ${this.cryptoOn?'#00e5ff55':'rgba(255,255,255,.12)'};color:${this.cryptoOn?'#00e5ff':'#445566'};padding:12px 14px;min-width:110px">
+          <button class="btn" id="crypto-btn" tabindex="0" aria-label="Ativar ou desativar criptografia" style="background:${this.cryptoOn?'#00e5ff14':'rgba(255,255,255,.04)'};border:2px solid ${this.cryptoOn?'#00e5ff55':'rgba(255,255,255,.12)'};color:${this.cryptoOn?'#00e5ff':'#445566'};padding:12px 14px;min-width:110px">
             <div style="font-size:22px">🔐</div>
             <div style="font-size:11px;font-weight:700">Criptografia</div>
             <div style="font-size:9px">${this.cryptoOn?'✅ Ativa':'Toque p/ ativar'}</div>
@@ -577,6 +730,11 @@ const Game = {
         // First time we see this threat — create the node
         d = document.createElement('div');
         d.dataset.uid = uidStr;
+        d.dataset.a11yInteractive = 'true';
+        d.className = 'threat-node';
+        d.setAttribute('role', 'button');
+        d.setAttribute('tabindex', '0');
+        d.setAttribute('aria-label', `Ameaça ${th.name}, causa ${th.dmg} de dano. Pressione Enter para destruir.`);
         d.style.cssText = `position:absolute;left:${th.x}%;top:${th.y}%;transform:translate(-50%,-50%);z-index:8;cursor:crosshair;animation:threatIn .3s ease-out;transition:left .08s linear,top .08s linear`;
         d.innerHTML = `<div style="background:${th.color}18;border:2px solid ${th.color}77;border-radius:12px;padding:8px 12px;text-align:center;box-shadow:0 0 18px ${th.color}44">
           <div style="font-size:26px">${th.emoji}</div>
@@ -584,6 +742,19 @@ const Game = {
           <div style="font-size:8px;color:#666">-${th.dmg}❤️</div>
         </div>`;
         d.addEventListener('click', e => { e.stopPropagation(); this._clickThreat(th.uid, e); });
+        d.addEventListener('keydown', e => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const r = d.getBoundingClientRect();
+
+            this._clickThreat(th.uid, {
+              clientX: r.left + r.width / 2,
+              clientY: r.top + r.height / 2
+            });
+          }
+        });
         d.addEventListener('touchstart', e => { e.preventDefault(); e.stopPropagation(); this._clickThreat(th.uid, e.touches[0]); }, {passive:false});
         layer.appendChild(d);
       } else if (th.exploding) {
@@ -606,6 +777,7 @@ const Game = {
     if (!th || !th.alive) return;
     State.earnScore(20); State.earnCoins(4);
     State.addLog(`💥 ${th.name} destruído!`, 'success');
+    if (window.A11y) A11y.announce(`${th.name} destruído.`, 'assertive');
     spawnParticle(e.clientX, e.clientY, '💥', th.color);
     this.threats = this.threats.map(t => t.uid===uid ? {...t,alive:false,exploding:true} : t);
     this._updateThreatsDom();

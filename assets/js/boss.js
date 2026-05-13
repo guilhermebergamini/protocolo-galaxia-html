@@ -44,12 +44,16 @@ const Boss = {
 
     // Keyboard
     this._onKeyDown = e => {
-      if (e.key === ' ') {
+      if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
         this.shoot();
       }
+
       this.keysDown[e.key.toLowerCase()] = true;
-      if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(e.key.toLowerCase()))
+
+      if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(e.key.toLowerCase())) {
         e.preventDefault();
+      }
     };
     this._onKeyUp = e => { this.keysDown[e.key.toLowerCase()] = false; };
     window.addEventListener('keydown', this._onKeyDown);
@@ -243,10 +247,10 @@ const Boss = {
         <div id="boss-warning" class="hidden" style="position:absolute;top:18%;left:50%;transform:translateX(-50%);z-index:20;background:${this.data.color}18;border:2px solid ${this.data.color}88;border-radius:14px;padding:10px 24px;text-align:center;backdrop-filter:blur(8px)"></div>
         <!-- Instruction -->
         <div style="position:absolute;top:50px;left:50%;transform:translateX(-50%);z-index:9;background:#ff444410;border:1px solid #ff444422;border-radius:8px;padding:4px 14px;font-size:10px;color:#ff9999;white-space:nowrap">
-          ⚠️ Clique no boss para atacar! WASD / ↑↓←→ para esquivar!
+          ⚠️ Teclado: ↑↓ movem · Espaço/Enter atira · Tab foca no boss!
         </div>
         <!-- Boss entity -->
-        <div id="boss-entity" style="position:absolute;left:75%;top:45%;transform:translate(-50%,-50%);z-index:8;cursor:crosshair;animation:bossFloat 2s ease-in-out infinite;filter:drop-shadow(0 0 28px ${this.data.color})" onclick="Boss.shoot()";spawnParticle(event.clientX,event.clientY,'💥','${this.data.color}');State.addLog('🎯 Boss atingido! -25hp','success')">
+        <div id="boss-entity" data-a11y-interactive="true" role="button" tabindex="0" aria-label="Boss ${this.data.name}. Pressione Enter ou Espaço para atirar." style="position:absolute;left:75%;top:45%;transform:translate(-50%,-50%);z-index:8;cursor:crosshair;animation:bossFloat 2s ease-in-out infinite;filter:drop-shadow(0 0 28px ${this.data.color})" onclick="Boss.shoot();spawnParticle(event.clientX,event.clientY,'💥','${this.data.color}');State.addLog('🎯 Boss atingido!','success')">
           <div style="text-align:center">
             <div style="font-size:60px">${this.data.emoji}</div>
             <div class="mono" style="color:${this.data.color};font-size:9px;margin-top:2px">${this.data.name}</div>
@@ -273,12 +277,33 @@ const Boss = {
           </div>
         </div>
         <!-- Mobile attack btn -->
-        <button class="btn" onclick="Boss.damage(25);spawnParticle(event.clientX,event.clientY,'🔫','#00e5ff')" style="position:absolute;bottom:18px;right:18px;z-index:12;background:${this.data.color}22;border:2px solid ${this.data.color}88;color:${this.data.color};font-size:14px;padding:14px 20px;border-radius:16px">
+        <button class="btn" tabindex="0" aria-label="Atacar boss" onclick="Boss.shoot();spawnParticle(event.clientX,event.clientY,'🔫','#00e5ff')" style="position:absolute;bottom:18px;right:18px;z-index:12;background:${this.data.color}22;border:2px solid ${this.data.color}88;color:${this.data.color};font-size:14px;padding:14px 20px;border-radius:16px">
           🔫 Atacar Boss
         </button>
       </div>
     `;
-    document.getElementById('mode-label').innerHTML = `<span class="mono" style="color:#ff00ff;font-size:10px;letter-spacing:2px">👾 BOSS: ${this.data.name}  —  WASD / ↑↓←→ para mover</span>`;
+    const bossEntity = document.getElementById('boss-entity');
+
+    if (bossEntity) {
+      bossEntity.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          this.shoot();
+
+          const r = bossEntity.getBoundingClientRect();
+          spawnParticle(r.left + r.width / 2, r.top + r.height / 2, '💥', this.data.color);
+        }
+      });
+    }
+
+    if (window.A11y) {
+      A11y.createHelpText(
+        document.getElementById('boss-arena'),
+        'Teclado: setas/WASD movem · Espaço/Enter atira · Tab navega'
+      );
+    }
+
+    document.getElementById('mode-label').innerHTML = `<span class="mono" style="color:#ff00ff;font-size:10px;letter-spacing:2px">👾 BOSS: ${this.data.name}  —  ↑↓ / WASD para mover · Espaço/Enter para atirar</span>`;
   },
 
   _renderBoss() {

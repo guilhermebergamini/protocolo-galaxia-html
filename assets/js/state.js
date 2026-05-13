@@ -37,6 +37,7 @@ const State = {
     projLoop:      null,
     playerLoop:    null,
     toastTimer:    null,
+    autoShootLoop: null,
   },
 
   // ── Resetar para nova partida ──
@@ -118,7 +119,7 @@ const State = {
     });
   },
   clearBoss() {
-    ['bossLoop','projLoop','playerLoop'].forEach(k => {
+    ['bossLoop','projLoop','playerLoop','autoShootLoop'].forEach(k => {
       clearInterval(this.timers[k]);
       clearTimeout(this.timers[k]);
       this.timers[k] = null;
